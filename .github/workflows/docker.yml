@@ -80,13 +80,13 @@ jobs:
         uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
         with:
           registry: ghcr.io
-          username: ${{ github.repository_owner }}
+          username: 0xca71
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Re-tag image
         env:
           REGISTRY_NAME: 'ghcr.io'
-          REPOSITORY: ${{ github.repository_owner }}/immich-server
+          REPOSITORY: 0xca71/immich-server
           TAG_OLD: main${{ matrix.suffix }}
           TAG_PR: ${{ github.event.number == 0 && github.ref_name || format('pr-{0}', github.event.number) }}${{ matrix.suffix }}
           TAG_COMMIT: commit-${{ github.event_name != 'pull_request' && github.sha || github.event.pull_request.head.sha }}${{ matrix.suffix }}
