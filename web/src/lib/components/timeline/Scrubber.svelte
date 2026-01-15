@@ -588,7 +588,19 @@
     >
       {#if !usingMobileDevice}
         {#if segment.hasLabel}
-          <div class="absolute end-5 text-[13px] dark:text-immich-dark-fg font-immich-mono bottom-0">
+          <div
+            class="absolute end-5 text-[13px] dark:text-immich-dark-fg font-immich-mono bottom-0 hover:cursor-pointer hover:text-primary transition-colors"
+            role="button"
+            aria-label="Jump to {segment.year}"
+            onclick={() => {
+              const scrubData = {
+                scrubberMonth: { year: segment.year, month: segment.month },
+                overallScrollPercent: -1,
+                scrubberMonthScrollPercent: 0,
+              };
+              onScrub?.(scrubData);
+            }}
+          >
             {segment.year}
           </div>
         {/if}
