@@ -7,6 +7,7 @@
   import Scrubber from '$lib/components/timeline/Scrubber.svelte';
   import TimelineAssetViewer from '$lib/components/timeline/TimelineAssetViewer.svelte';
   import TimelineKeyboardActions from '$lib/components/timeline/actions/TimelineKeyboardActions.svelte';
+  import YearFilter from '$lib/components/timeline/YearFilter.svelte';
   import { focusAsset } from '$lib/components/timeline/actions/focus-actions';
   import { AssetAction } from '$lib/constants';
   import HotModuleReload from '$lib/elements/HotModuleReload.svelte';
@@ -743,6 +744,11 @@
     <TimelineAssetViewer bind:invisible {timelineManager} {removeAction} {withStacked} {isShared} {album} {person} />
   {/if}
 </Portal>
+
+<!-- Year Filter Bar at bottom -->
+{#if timelineManager.months.length > 0}
+  <YearFilter {timelineManager} />
+{/if}
 
 <style>
   #asset-grid {
