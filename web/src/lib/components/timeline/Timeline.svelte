@@ -692,7 +692,7 @@
         {@const display = monthGroup.intersecting}
         {@const absoluteHeight = monthGroup.top}
 
-        {#if !monthGroup.isLoaded}
+        {#if !monthGroup.isLoaded && display}
           <div
             style:height={monthGroup.height + 'px'}
             style:position="absolute"

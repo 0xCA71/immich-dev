@@ -37,32 +37,11 @@ describe(TimelineService.name, () => {
         await ctx.newExif({ assetId: asset.id, make: 'Canon' });
       }
 
-      const result = await sut.getTimeBuckets(auth, {});
-      console.log(`-->[${expect.getState().currentTestName}] ${JSON.stringify(result)}`);
-
-      expect(result).toEqual([
+      const response = sut.getTimeBuckets(auth, {});
+      await expect(response).resolves.toEqual([
         { count: 3, timeBucket: '1970-02-01' },
         { count: 1, timeBucket: '1970-01-01' },
       ]);
-    });
-
-    it('should filter time buckets by startDate/endDate', async () => {
-      const { sut, ctx } = setup();
-      const { user } = await ctx.newUser();
-      const auth = factory.auth({ user });
-
-      const dates = [new Date('1970-01-01'), new Date('1970-02-10'), new Date('1970-02-11')];
-      for (const localDateTime of dates) {
-        const { asset } = await ctx.newAsset({ ownerId: user.id, localDateTime });
-        await ctx.newExif({ assetId: asset.id, make: 'Canon' });
-      }
-
-      const startDate = new Date('1970-02-01T00:00:00.000Z');
-      const endDate = new Date('1970-03-01T00:00:00.000Z');
-      const result = await sut.getTimeBuckets(auth, { startDate, endDate });
-      console.log(`-->[${expect.getState().currentTestName}] ${JSON.stringify(result)}`);
-
-      expect(result).toEqual([{ count: 2, timeBucket: '1970-02-01' }]);
     });
 
     it('should return error if time bucket is requested with partners asset and archived', async () => {

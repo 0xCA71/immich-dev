@@ -232,11 +232,14 @@ export class TimelineManager extends VirtualScrollManager {
     }
   }
 
-  async #initializeMonthGroups() {
-    const timebuckets = await getTimeBuckets({
-      ...authManager.params,
-      ...this.#options,
-    });
+  async #initializeMonthGroups(signal: AbortSignal) {
+    const timebuckets = await getTimeBuckets(
+      {
+        ...authManager.params,
+        ...this.#options,
+      },
+      { signal },
+    );
 
     const allMonths = timebuckets.map((timeBucket) => {
       const date = new SvelteDate(timeBucket.timeBucket);
@@ -281,9 +284,9 @@ export class TimelineManager extends VirtualScrollManager {
     this.isInitialized = false;
     this.months = [];
     this.albumAssets.clear();
-    await this.initTask.execute(async () => {
+    await this.initTask.execute(async (signal: AbortSignal) => {
       this.#options = options;
-      await this.#initializeMonthGroups();
+      await this.#initializeMonthGroups(signal);
     }, true);
   }
 

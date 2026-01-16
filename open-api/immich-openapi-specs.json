@@ -12985,26 +12985,6 @@
             }
           },
           {
-            "name": "startDate",
-            "required": false,
-            "in": "query",
-            "description": "Filter assets with localDateTime greater than or equal to startDate (UTC)",
-            "schema": {
-              "format": "date-time",
-              "type": "string"
-            }
-          },
-          {
-            "name": "endDate",
-            "required": false,
-            "in": "query",
-            "description": "Filter assets with localDateTime less than endDate (UTC)",
-            "schema": {
-              "format": "date-time",
-              "type": "string"
-            }
-          },
-          {
             "name": "key",
             "required": false,
             "in": "query",
@@ -13178,26 +13158,6 @@
             "description": "Filter by trash status (true for trashed assets only, false for non-trashed only)",
             "schema": {
               "type": "boolean"
-            }
-          },
-          {
-            "name": "startDate",
-            "required": false,
-            "in": "query",
-            "description": "Filter assets with localDateTime greater than or equal to startDate (UTC)",
-            "schema": {
-              "format": "date-time",
-              "type": "string"
-            }
-          },
-          {
-            "name": "endDate",
-            "required": false,
-            "in": "query",
-            "description": "Filter assets with localDateTime less than endDate (UTC)",
-            "schema": {
-              "format": "date-time",
-              "type": "string"
             }
           },
           {
