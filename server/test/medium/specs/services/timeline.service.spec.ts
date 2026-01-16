@@ -1,6 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import { Kysely } from 'kysely';
-import { AssetVisibility } from 'src/enum';
+import { AssetVisibility, TimeBucketGranularity } from 'src/enum';
 import { AccessRepository } from 'src/repositories/access.repository';
 import { AssetRepository } from 'src/repositories/asset.repository';
 import { LoggingRepository } from 'src/repositories/logging.repository';
@@ -38,9 +38,31 @@ describe(TimelineService.name, () => {
       }
 
       const response = sut.getTimeBuckets(auth, {});
-      await expect(response).resolves.toEqual([
+      const result = await response;
+      console.log(`-->[TimelineService.getTimeBuckets should get time buckets by month] ${JSON.stringify(result)}`);
+      expect(result).toEqual([
         { count: 3, timeBucket: '1970-02-01' },
         { count: 1, timeBucket: '1970-01-01' },
+      ]);
+    });
+
+    it('should get time buckets by day when granularity=day', async () => {
+      const { sut, ctx } = setup();
+      const { user } = await ctx.newUser();
+      const auth = factory.auth({ user });
+      const dates = [new Date('1970-02-10'), new Date('1970-02-11'), new Date('1970-02-11')];
+      for (const localDateTime of dates) {
+        const { asset } = await ctx.newAsset({ ownerId: user.id, localDateTime });
+        await ctx.newExif({ assetId: asset.id, make: 'Canon' });
+      }
+
+      const result = await sut.getTimeBuckets(auth, { granularity: TimeBucketGranularity.Day });
+      console.log(
+        `-->[TimelineService.getTimeBuckets should get time buckets by day when granularity=day] ${JSON.stringify(result)}`,
+      );
+      expect(result).toEqual([
+        { count: 2, timeBucket: '1970-02-11' },
+        { count: 1, timeBucket: '1970-02-10' },
       ]);
     });
 

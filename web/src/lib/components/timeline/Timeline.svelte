@@ -7,7 +7,6 @@
   import Scrubber from '$lib/components/timeline/Scrubber.svelte';
   import TimelineAssetViewer from '$lib/components/timeline/TimelineAssetViewer.svelte';
   import TimelineKeyboardActions from '$lib/components/timeline/actions/TimelineKeyboardActions.svelte';
-  import YearFilter from '$lib/components/timeline/YearFilter.svelte';
   import { focusAsset } from '$lib/components/timeline/actions/focus-actions';
   import { AssetAction } from '$lib/constants';
   import HotModuleReload from '$lib/elements/HotModuleReload.svelte';
@@ -627,6 +626,9 @@
 {#if timelineManager.months.length > 0}
   <Scrubber
     {timelineManager}
+    years={timelineManager.availableYears}
+    {selectedYear}
+    {onSelectYear}
     height={timelineManager.viewportHeight}
     timelineTopOffset={timelineManager.topSectionHeight}
     timelineBottomOffset={timelineManager.bottomSectionHeight}
@@ -678,9 +680,6 @@
       style:right="0"
     >
       {@render children?.()}
-      {#if timelineManager.availableYears.length > 0}
-        <YearFilter years={timelineManager.availableYears} {selectedYear} {onSelectYear} />
-      {/if}
       {#if isEmpty}
         <!-- (optional) empty placeholder -->
         {@render empty?.()}

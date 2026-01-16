@@ -41,7 +41,7 @@ export class TimelineService extends BaseService {
       }
     }
 
-    return { ...options, userIds };
+    return { ...options, userIds, granularity: dto.granularity };
   }
 
   private async timeBucketChecks(auth: AuthDto, dto: TimeBucketDto) {

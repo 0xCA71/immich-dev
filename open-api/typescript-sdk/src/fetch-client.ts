@@ -4890,6 +4890,7 @@ export function getTimeBucket({ albumId, isFavorite, isTrashed, startDate, endDa
     startDate?: string;
     endDate?: string;
     key?: string;
+    granularity?: TimeBucketGranularity;
     order?: AssetOrder;
     personId?: string;
     slug?: string;
@@ -4911,6 +4912,7 @@ export function getTimeBucket({ albumId, isFavorite, isTrashed, startDate, endDa
         startDate,
         endDate,
         key,
+        granularity,
         order,
         personId,
         slug,
@@ -4935,6 +4937,7 @@ export function getTimeBuckets({ albumId, isFavorite, isTrashed, startDate, endD
     startDate?: string;
     endDate?: string;
     key?: string;
+    granularity?: TimeBucketGranularity;
     order?: AssetOrder;
     personId?: string;
     slug?: string;
@@ -4955,6 +4958,7 @@ export function getTimeBuckets({ albumId, isFavorite, isTrashed, startDate, endD
         startDate,
         endDate,
         key,
+        granularity,
         order,
         personId,
         slug,
@@ -5334,6 +5338,10 @@ export enum AssetVisibility {
     Timeline = "timeline",
     Hidden = "hidden",
     Locked = "locked"
+}
+export enum TimeBucketGranularity {
+    Month = "month",
+    Day = "day"
 }
 export enum AlbumUserRole {
     Editor = "editor",

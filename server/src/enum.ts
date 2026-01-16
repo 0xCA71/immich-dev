@@ -60,6 +60,11 @@ export enum AssetOrder {
   Desc = 'desc',
 }
 
+ export enum TimeBucketGranularity {
+  Month = 'month',
+  Day = 'day',
+ }
+
 export enum DatabaseAction {
   Create = 'CREATE',
   Update = 'UPDATE',

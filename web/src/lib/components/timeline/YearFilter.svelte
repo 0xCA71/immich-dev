@@ -18,9 +18,8 @@
 </script>
 
 <div class="year-filter">
-  <div class="year-filter-label">年份</div>
   <select class="year-filter-select" value={selectedYear ?? ''} onchange={handleChange} disabled={years.length === 0}>
-    <option value="">全部</option>
+    <option value=""></option>
     {#each years as year}
       <option value={year}>{year}</option>
     {/each}
@@ -30,19 +29,8 @@
 <style>
   .year-filter {
     display: flex;
-    gap: 0.5rem;
     align-items: center;
-    padding: 0.5rem 0.75rem;
-  }
-
-  .year-filter-label {
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: rgb(var(--immich-fg));
-  }
-
-  :global(.dark) .year-filter-label {
-    color: rgb(var(--immich-dark-fg));
+    padding: 0.25rem 0.25rem;
   }
 
   .year-filter-select {
@@ -51,7 +39,7 @@
     border: 1px solid rgba(0, 0, 0, 0.15);
     background: rgba(255, 255, 255, 0.85);
     padding: 0 0.5rem;
-    min-width: 8rem;
+    min-width: 5.5rem;
   }
 
   :global(.dark) .year-filter-select {

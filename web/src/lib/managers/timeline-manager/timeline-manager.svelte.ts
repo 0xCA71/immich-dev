@@ -23,7 +23,7 @@ import {
   type TimelineDateTime,
   type TimelineYearMonth,
 } from '$lib/utils/timeline-util';
-import { AssetOrder, getAssetInfo, getTimeBuckets, type AssetResponseDto } from '@immich/sdk';
+import { AssetOrder, TimeBucketGranularity, getAssetInfo, getTimeBuckets, type AssetResponseDto } from '@immich/sdk';
 import { clamp, isEqual } from 'lodash-es';
 import { SvelteDate, SvelteSet } from 'svelte/reactivity';
 import { DayGroup } from './day-group.svelte';
@@ -33,6 +33,7 @@ import type {
   AssetDescriptor,
   Direction,
   MoveAsset,
+  ScrubberDayBucket,
   ScrubberMonth,
   TimelineAsset,
   TimelineManagerOptions,
@@ -92,6 +93,7 @@ export class TimelineManager extends VirtualScrollManager {
   static #INIT_OPTIONS = {};
   #websocketSupport: WebsocketSupport | undefined;
   #options: TimelineManagerOptions = TimelineManager.#INIT_OPTIONS;
+  #scrubberDayBucketsByMonth: Map<string, ScrubberDayBucket[]> = new Map();
   #updatingIntersections = false;
   #scrollableElement: HTMLElement | undefined = $state();
   #showAssetOwners = new PersistedLocalStorage<boolean>('album-show-asset-owners', false);
@@ -287,7 +289,47 @@ export class TimelineManager extends VirtualScrollManager {
     await this.initTask.execute(async (signal: AbortSignal) => {
       this.#options = options;
       await this.#initializeMonthGroups(signal);
+      await this.#initializeScrubberDayBuckets(signal);
     }, true);
+  }
+
+  async #initializeScrubberDayBuckets(signal: AbortSignal) {
+    this.#scrubberDayBucketsByMonth.clear();
+    const hasDateRange = !!this.#options.startDate || !!this.#options.endDate;
+    if (!hasDateRange) {
+      return;
+    }
+
+    const buckets = await getTimeBuckets(
+      {
+        ...authManager.params,
+        ...this.#options,
+        granularity: TimeBucketGranularity.Day,
+      },
+      { signal },
+    );
+
+    const byMonth = new Map<string, Map<number, number>>();
+    for (const bucket of buckets) {
+      const date = new SvelteDate(bucket.timeBucket);
+      const year = date.getUTCFullYear();
+      const month = date.getUTCMonth() + 1;
+      const day = date.getUTCDate();
+      const key = `${year}-${month}`;
+      let dayMap = byMonth.get(key);
+      if (!dayMap) {
+        dayMap = new Map();
+        byMonth.set(key, dayMap);
+      }
+      dayMap.set(day, (dayMap.get(day) ?? 0) + bucket.count);
+    }
+
+    for (const [key, dayMap] of byMonth) {
+      const dayBuckets: ScrubberDayBucket[] = [...dayMap.entries()]
+        .map(([day, count]) => ({ day, count }))
+        .sort((a, b) => a.day - b.day);
+      this.#scrubberDayBucketsByMonth.set(key, dayBuckets);
+    }
   }
 
   public override destroy() {
@@ -335,6 +377,7 @@ export class TimelineManager extends VirtualScrollManager {
 
   #createScrubberMonths() {
     this.scrubberMonths = this.months.map((month) => ({
+      dayBuckets: this.#scrubberDayBucketsByMonth.get(`${month.yearMonth.year}-${month.yearMonth.month}`),
       assetCount: month.assetsCount,
       year: month.yearMonth.year,
       month: month.yearMonth.month,

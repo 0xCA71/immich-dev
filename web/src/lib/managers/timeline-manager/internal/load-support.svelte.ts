@@ -1,6 +1,6 @@
 import { authManager } from '$lib/managers/auth-manager.svelte';
 import { toISOYearMonthUTC } from '$lib/utils/timeline-util';
-import { getTimeBucket } from '@immich/sdk';
+import { TimeBucketGranularity, getTimeBucket } from '@immich/sdk';
 import type { MonthGroup } from '../month-group.svelte';
 import { TimelineManager } from '../timeline-manager.svelte';
 import type { TimelineManagerOptions } from '../types';
@@ -21,6 +21,7 @@ export async function loadFromTimeBuckets(
     {
       ...authManager.params,
       ...apiOptions,
+      granularity: TimeBucketGranularity.Month,
       timeBucket,
     },
     { signal },
@@ -35,6 +36,7 @@ export async function loadFromTimeBuckets(
       {
         ...authManager.params,
         ...apiOptions,
+        granularity: TimeBucketGranularity.Month,
         albumId: timelineAlbumId,
         timeBucket,
       },

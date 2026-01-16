@@ -1,10 +1,19 @@
 import { ApiProperty } from '@nestjs/swagger';
 
 import { IsString } from 'class-validator';
-import { AssetOrder, AssetVisibility } from 'src/enum';
+import { AssetOrder, AssetVisibility, TimeBucketGranularity } from 'src/enum';
 import { ValidateBoolean, ValidateDate, ValidateEnum, ValidateUUID } from 'src/validation';
 
 export class TimeBucketDto {
+  @ValidateEnum({
+    enum: TimeBucketGranularity,
+    name: 'TimeBucketGranularity',
+    optional: true,
+    default: TimeBucketGranularity.Month,
+    description: 'Time bucket granularity (MONTH or DAY)',
+  })
+  granularity: TimeBucketGranularity = TimeBucketGranularity.Month;
+
   @ValidateDate({
     optional: true,
     format: 'date-time',

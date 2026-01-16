@@ -12993,6 +12993,15 @@
             }
           },
           {
+            "name": "granularity",
+            "required": false,
+            "in": "query",
+            "description": "Time bucket granularity (MONTH or DAY)",
+            "schema": {
+              "$ref": "#/components/schemas/TimeBucketGranularity"
+            }
+          },
+          {
             "name": "order",
             "required": false,
             "in": "query",
@@ -13166,6 +13175,15 @@
             "in": "query",
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "granularity",
+            "required": false,
+            "in": "query",
+            "description": "Time bucket granularity (MONTH or DAY)",
+            "schema": {
+              "$ref": "#/components/schemas/TimeBucketGranularity"
             }
           },
           {
@@ -16220,6 +16238,13 @@
         "enum": [
           "asc",
           "desc"
+        ],
+        "type": "string"
+      },
+      "TimeBucketGranularity": {
+        "enum": [
+          "month",
+          "day"
         ],
         "type": "string"
       },

@@ -82,6 +82,12 @@ export type ScrubberMonth = {
   year: number;
   month: number;
   title: string;
+  dayBuckets?: ScrubberDayBucket[];
+};
+
+export type ScrubberDayBucket = {
+  day: number;
+  count: number;
 };
 
 export type TimelineManagerLayoutOptions = {

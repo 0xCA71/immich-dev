@@ -1,9 +1,11 @@
 <script lang="ts">
   import { TimelineManager } from '$lib/managers/timeline-manager/timeline-manager.svelte';
-  import type { ScrubberMonth, ViewportTopMonth } from '$lib/managers/timeline-manager/types';
+  import type { ScrubberDayBucket, ScrubberMonth, ViewportTopMonth } from '$lib/managers/timeline-manager/types';
+  import YearFilter from '$lib/components/timeline/YearFilter.svelte';
   import { mobileDevice } from '$lib/stores/mobile-device.svelte';
   import { getTabbable } from '$lib/utils/focus-util';
   import { type ScrubberListener } from '$lib/utils/timeline-util';
+  import { AssetOrder } from '@immich/sdk';
   import { Icon } from '@immich/ui';
   import { mdiPlay } from '@mdi/js';
   import { clamp } from 'lodash-es';
@@ -36,6 +38,10 @@
     startScrub?: ScrubberListener;
     /** Callback fired when scrubbing stops */
     stopScrub?: ScrubberListener;
+
+    years?: number[];
+    selectedYear?: number;
+    onSelectYear?: (year?: number) => void;
   }
 
   let {
@@ -50,15 +56,19 @@
     onScrubKeyDown = undefined,
     startScrub = undefined,
     stopScrub = undefined,
+    years = [],
+    selectedYear = undefined,
+    onSelectYear = undefined,
     scrubberWidth = $bindable(),
   }: Props = $props();
 
   let isHover = $state(false);
   let isDragging = $state(false);
+  let isHoverOnYearFilter = $state(false);
   let isHoverOnPaddingTop = $state(false);
   let isHoverOnPaddingBottom = $state(false);
   let hoverY = $state(0);
-  let clientY = 0;
+  let clientY = $state(0);
   let windowHeight = $state(0);
   let scrollBar: HTMLElement | undefined = $state();
 
@@ -69,8 +79,11 @@
 
   const MOBILE_WIDTH = 20;
   const DESKTOP_WIDTH = 60;
+  const DESKTOP_WIDTH_WITH_FILTER = 96;
   const HOVER_DATE_HEIGHT = 31.75;
-  const PADDING_TOP = $derived(usingMobileDevice ? 25 : HOVER_DATE_HEIGHT);
+  const YEAR_FILTER_HEIGHT = 44;
+  const showYearFilter = $derived.by(() => !usingMobileDevice && years.length > 0 && !!onSelectYear);
+  const PADDING_TOP = $derived(usingMobileDevice ? 25 : HOVER_DATE_HEIGHT + (showYearFilter ? YEAR_FILTER_HEIGHT : 0));
   const PADDING_BOTTOM = $derived(usingMobileDevice ? 25 : 10);
   const MIN_YEAR_LABEL_DISTANCE = 16;
   const MIN_DOT_DISTANCE = 8;
@@ -85,10 +98,17 @@
       }
       return '0px';
     }
-    return DESKTOP_WIDTH + 'px';
+    return (showYearFilter ? DESKTOP_WIDTH_WITH_FILTER : DESKTOP_WIDTH) + 'px';
   });
   $effect(() => {
-    scrubberWidth = usingMobileDevice ? MOBILE_WIDTH : DESKTOP_WIDTH;
+    scrubberWidth = usingMobileDevice ? MOBILE_WIDTH : showYearFilter ? DESKTOP_WIDTH_WITH_FILTER : DESKTOP_WIDTH;
+  });
+
+  const scrubberLabelMode = $derived.by(() => {
+    if (selectedYear !== undefined) {
+      return 'month';
+    }
+    return 'year';
   });
 
   const toScrollFromMonthGroupPercentage = (
@@ -136,11 +156,12 @@
     dateFormatted: string;
     year: number;
     month: number;
+    dayBuckets?: ScrubberDayBucket[];
     hasLabel: boolean;
     hasDot: boolean;
   };
 
-  const calculateSegments = (months: ScrubberMonth[]) => {
+  const calculateSegments = (months: ScrubberMonth[], labelMode: 'month' | 'year') => {
     let verticalSpanWithoutLabel = 0;
     let verticalSpanWithoutDot = 0;
 
@@ -162,10 +183,19 @@
         dateFormatted: scrubMonth.title,
         year: scrubMonth.year,
         month: scrubMonth.month,
+        dayBuckets: scrubMonth.dayBuckets,
         hasLabel: false,
         hasDot: false,
       };
       top += segment.height;
+
+      if (labelMode === 'month') {
+        segment.hasLabel = true;
+        segment.hasDot = false;
+        segments.push(segment);
+        continue;
+      }
+
       if (previousLabeledSegment) {
         if (previousLabeledSegment.year !== segment.year && verticalSpanWithoutLabel > MIN_YEAR_LABEL_DISTANCE) {
           verticalSpanWithoutLabel = 0;
@@ -190,13 +220,59 @@
     return segments;
   };
   let activeSegment: HTMLElement | undefined = $state();
-  const segments = $derived(calculateSegments(timelineManager.scrubberMonths));
+  const segments = $derived.by(() => calculateSegments(timelineManager.scrubberMonths, scrubberLabelMode));
+
+  const isAscending = $derived.by(() => timelineManager.getAssetOrder() === AssetOrder.Asc);
+
+  const formatScrubberLabel = (segment: Segment) => (scrubberLabelMode === 'month' ? `${segment.month}月` : `${segment.year}`);
+
+  const formatDayFromMonthPercent = (year: number, month: number, percent: number, dayBuckets?: ScrubberDayBucket[]) => {
+    const effectivePercent = clamp(isAscending ? percent : 1 - percent, 0, 1);
+    if (dayBuckets && dayBuckets.length > 0) {
+      const total = dayBuckets.reduce((acc, b) => acc + b.count, 0);
+      if (total > 0) {
+        const target = effectivePercent * total;
+        let cumulative = 0;
+        for (const bucket of dayBuckets) {
+          cumulative += bucket.count;
+          if (cumulative >= target) {
+            const date = new Date(Date.UTC(year, month - 1, bucket.day));
+            return date.toISOString().slice(0, 10);
+          }
+        }
+        const last = dayBuckets.at(-1);
+        if (last) {
+          const date = new Date(Date.UTC(year, month - 1, last.day));
+          return date.toISOString().slice(0, 10);
+        }
+      }
+    }
+
+    const date = new Date(Date.UTC(year, month - 1, 1));
+    const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
+    const day = Math.min(daysInMonth, Math.max(1, Math.floor(effectivePercent * daysInMonth) + 1));
+    date.setUTCDate(day);
+    return date.toISOString().slice(0, 10);
+  };
+
+  const getMonthSegment = (year: number, month: number) => segments.find((s) => s.year === year && s.month === month);
   const hoverLabel = $derived.by(() => {
     if (isHoverOnPaddingTop) {
-      return segments.at(0)?.dateFormatted;
+      const first = segments.at(0);
+      if (scrubberLabelMode === 'month' && first) {
+        return formatDayFromMonthPercent(first.year, first.month, 0, first.dayBuckets);
+      }
+      return first?.dateFormatted;
     }
     if (isHoverOnPaddingBottom) {
-      return segments.at(-1)?.dateFormatted;
+      const last = segments.at(-1);
+      if (scrubberLabelMode === 'month' && last) {
+        return formatDayFromMonthPercent(last.year, last.month, 1, last.dayBuckets);
+      }
+      return last?.dateFormatted;
+    }
+    if (scrubberLabelMode === 'month') {
+      return dayHoverLabel || activeSegment?.dataset.label;
     }
     return activeSegment?.dataset.label;
   });
@@ -224,7 +300,59 @@
     }
     return null;
   });
+  const scrollDayLabel = $derived.by(() => {
+    if (scrubberLabelMode !== 'month') {
+      return undefined;
+    }
+    if (!viewportTopMonth || viewportTopMonth === 'lead-in' || viewportTopMonth === 'lead-out') {
+      return undefined;
+    }
+    const seg = getMonthSegment(viewportTopMonth.year, viewportTopMonth.month);
+    return formatDayFromMonthPercent(
+      viewportTopMonth.year,
+      viewportTopMonth.month,
+      viewportTopMonthScrollPercent,
+      seg?.dayBuckets,
+    );
+  });
+  const dayHoverLabel = $derived.by(() => {
+    if (scrubberLabelMode !== 'month') {
+      return undefined;
+    }
+    if (!scrollBar) {
+      return undefined;
+    }
+
+    const rect = scrollBar.getBoundingClientRect()!;
+    const x = rect.left + rect.width / 2;
+    const { monthGroupPercentY } = getActive(x, clientY);
+    const segment = segmentDate;
+    if (!segment || segment === 'lead-in' || segment === 'lead-out') {
+      return undefined;
+    }
+    const seg = getMonthSegment(segment.year, segment.month);
+    return formatDayFromMonthPercent(segment.year, segment.month, monthGroupPercentY, seg?.dayBuckets);
+  });
   const scrollHoverLabel = $derived.by(() => {
+    if (scrubberLabelMode === 'month') {
+      const first = segments.at(0);
+      const last = segments.at(-1);
+
+      if (first && scrollY !== undefined && scrollY < relativeTopOffset) {
+        return formatDayFromMonthPercent(first.year, first.month, 0, first.dayBuckets);
+      }
+
+      if (last && scrollY !== undefined) {
+        let offset = relativeTopOffset;
+        for (const segment of segments) {
+          offset += segment.height;
+        }
+        if (scrollY > offset) {
+          return formatDayFromMonthPercent(last.year, last.month, 1, last.dayBuckets);
+        }
+      }
+    }
+
     if (scrollY !== undefined) {
       if (scrollY < relativeTopOffset) {
         return segments.at(0)?.dateFormatted;
@@ -238,7 +366,11 @@
         }
       }
     }
-    return scrollSegment?.dateFormatted || '';
+    const label = scrollSegment?.dateFormatted || '';
+    if (scrubberLabelMode === 'month') {
+      return scrollDayLabel || label;
+    }
+    return label;
   });
 
   const findElementBestY = (elements: Element[], y: number, ...ids: string[]) => {
@@ -493,7 +625,7 @@
 <svelte:window
   bind:innerHeight={windowHeight}
   onmousemove={({ clientY }) => (isDragging || isHover) && handleMouseEvent({ clientY })}
-  onmousedown={({ clientY }) => isHover && handleMouseEvent({ clientY, isDragging: true })}
+  onmousedown={({ clientY }) => isHover && !isHoverOnYearFilter && handleMouseEvent({ clientY, isDragging: true })}
   onmouseup={({ clientY }) => handleMouseEvent({ clientY, isDragging: false })}
 />
 
@@ -519,6 +651,16 @@
   onkeydown={keydown}
   draggable="false"
 >
+  {#if showYearFilter}
+    <div
+      class="absolute end-0 top-0 z-2 pointer-events-auto"
+      style:height={YEAR_FILTER_HEIGHT + 'px'}
+      onmouseenter={() => (isHoverOnYearFilter = true)}
+      onmouseleave={() => (isHoverOnYearFilter = false)}
+    >
+      <YearFilter years={years} {selectedYear} {onSelectYear} />
+    </div>
+  {/if}
   {#if !usingMobileDevice && hoverLabel && (isHover || isDragging)}
     <div
       id="time-label"
@@ -583,7 +725,7 @@
       class="relative"
       data-id="time-segment"
       data-segment-year-month={segment.year + '-' + segment.month}
-      data-label={segment.dateFormatted}
+      data-label={formatScrubberLabel(segment)}
       style:height={segment.height + 'px'}
     >
       {#if !usingMobileDevice}
@@ -591,7 +733,7 @@
           <div
             class="absolute end-5 text-[13px] dark:text-immich-dark-fg font-immich-mono bottom-0 hover:cursor-pointer hover:text-primary transition-colors"
             role="button"
-            aria-label="Jump to {segment.year}"
+            aria-label={scrubberLabelMode === 'month' ? `Jump to ${segment.month}月` : `Jump to ${segment.year}`}
             onclick={() => {
               const scrubData = {
                 scrubberMonth: { year: segment.year, month: segment.month },
@@ -601,10 +743,10 @@
               onScrub?.(scrubData);
             }}
           >
-            {segment.year}
+            {formatScrubberLabel(segment)}
           </div>
         {/if}
-        {#if segment.hasDot}
+        {#if segment.hasDot && scrubberLabelMode !== 'month'}
           <div class="absolute end-3 bottom-0 h-1 w-1 rounded-full bg-gray-300"></div>
         {/if}
       {/if}

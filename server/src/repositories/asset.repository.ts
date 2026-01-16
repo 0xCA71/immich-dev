@@ -5,7 +5,7 @@ import { InjectKysely } from 'nestjs-kysely';
 import { LockableProperty, Stack } from 'src/database';
 import { Chunked, ChunkedArray, DummyValue, GenerateSql } from 'src/decorators';
 import { AuthDto } from 'src/dtos/auth.dto';
-import { AssetFileType, AssetOrder, AssetStatus, AssetType, AssetVisibility } from 'src/enum';
+import { AssetFileType, AssetOrder, AssetStatus, AssetType, AssetVisibility, TimeBucketGranularity } from 'src/enum';
 import { DB } from 'src/schema';
 import { AssetExifTable } from 'src/schema/tables/asset-exif.table';
 import { AssetFileTable } from 'src/schema/tables/asset-file.table';
@@ -69,6 +69,7 @@ export interface TimeBucketOptions extends AssetBuilderOptions {
   order?: AssetOrder;
   startDate?: Date;
   endDate?: Date;
+  granularity?: TimeBucketGranularity;
 }
 
 export interface TimeBucketItem {
@@ -647,11 +648,12 @@ export class AssetRepository {
 
   @GenerateSql({ params: [{}] })
   async getTimeBuckets(options: TimeBucketOptions): Promise<TimeBucketItem[]> {
+    const granularity = options.granularity ?? TimeBucketGranularity.Month;
     return this.db
       .with('asset', (qb) =>
         qb
           .selectFrom('asset')
-          .select(truncatedDate<Date>().as('timeBucket'))
+          .select(truncatedDate<Date>(granularity).as('timeBucket'))
           .$if(!!options.startDate, (qb) => qb.where('asset.localDateTime', '>=', options.startDate!))
           .$if(!!options.endDate, (qb) => qb.where('asset.localDateTime', '<', options.endDate!))
           .$if(!!options.isTrashed, (qb) => qb.where('asset.status', '!=', AssetStatus.Deleted))
@@ -691,6 +693,7 @@ export class AssetRepository {
     params: [DummyValue.TIME_BUCKET, { withStacked: true }, { user: { id: DummyValue.UUID } }],
   })
   getTimeBucket(timeBucket: string, options: TimeBucketOptions, auth: AuthDto) {
+    const granularity = options.granularity ?? TimeBucketGranularity.Month;
     const query = this.db
       .with('cte', (qb) =>
         qb
@@ -732,7 +735,11 @@ export class AssetRepository {
           .where('asset.deletedAt', options.isTrashed ? 'is not' : 'is', null)
           .$if(options.visibility == undefined, withDefaultVisibility)
           .$if(!!options.visibility, (qb) => qb.where('asset.visibility', '=', options.visibility!))
-          .where(truncatedDate(), '=', timeBucket.replace(/^[+-]/, ''))
+          .where(
+            sql`(${truncatedDate(granularity)} AT TIME ZONE 'UTC')::date`,
+            '=',
+            sql`${timeBucket.replace(/^[+-]/, '')}::date`,
+          )
           .$if(!!options.albumId, (qb) =>
             qb.where((eb) =>
               eb.exists(
