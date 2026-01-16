@@ -4887,6 +4887,8 @@ export function getTimeBucket({ albumId, isFavorite, isTrashed, key, order, pers
     albumId?: string;
     isFavorite?: boolean;
     isTrashed?: boolean;
+    startDate?: string;
+    endDate?: string;
     key?: string;
     order?: AssetOrder;
     personId?: string;
@@ -4906,6 +4908,8 @@ export function getTimeBucket({ albumId, isFavorite, isTrashed, key, order, pers
         albumId,
         isFavorite,
         isTrashed,
+        startDate,
+        endDate,
         key,
         order,
         personId,
@@ -4928,6 +4932,8 @@ export function getTimeBuckets({ albumId, isFavorite, isTrashed, key, order, per
     albumId?: string;
     isFavorite?: boolean;
     isTrashed?: boolean;
+    startDate?: string;
+    endDate?: string;
     key?: string;
     order?: AssetOrder;
     personId?: string;
@@ -4946,6 +4952,8 @@ export function getTimeBuckets({ albumId, isFavorite, isTrashed, key, order, per
         albumId,
         isFavorite,
         isTrashed,
+        startDate,
+        endDate,
         key,
         order,
         personId,

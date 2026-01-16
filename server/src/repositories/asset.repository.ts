@@ -67,6 +67,8 @@ interface AssetBuilderOptions {
 
 export interface TimeBucketOptions extends AssetBuilderOptions {
   order?: AssetOrder;
+  startDate?: Date;
+  endDate?: Date;
 }
 
 export interface TimeBucketItem {
@@ -650,6 +652,8 @@ export class AssetRepository {
         qb
           .selectFrom('asset')
           .select(truncatedDate<Date>().as('timeBucket'))
+          .$if(!!options.startDate, (qb) => qb.where('asset.localDateTime', '>=', options.startDate!))
+          .$if(!!options.endDate, (qb) => qb.where('asset.localDateTime', '<', options.endDate!))
           .$if(!!options.isTrashed, (qb) => qb.where('asset.status', '!=', AssetStatus.Deleted))
           .where('asset.deletedAt', options.isTrashed ? 'is not' : 'is', null)
           .$if(options.visibility === undefined, withDefaultVisibility)
@@ -723,6 +727,8 @@ export class AssetRepository {
               .as('ratio'),
           ])
           .$if(!!options.withCoordinates, (qb) => qb.select(['asset_exif.latitude', 'asset_exif.longitude']))
+          .$if(!!options.startDate, (qb) => qb.where('asset.localDateTime', '>=', options.startDate!))
+          .$if(!!options.endDate, (qb) => qb.where('asset.localDateTime', '<', options.endDate!))
           .where('asset.deletedAt', options.isTrashed ? 'is not' : 'is', null)
           .$if(options.visibility == undefined, withDefaultVisibility)
           .$if(!!options.visibility, (qb) => qb.where('asset.visibility', '=', options.visibility!))

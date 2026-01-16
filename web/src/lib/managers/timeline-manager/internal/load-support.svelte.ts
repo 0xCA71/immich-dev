@@ -16,10 +16,11 @@ export async function loadFromTimeBuckets(
   }
 
   const timeBucket = toISOYearMonthUTC(monthGroup.yearMonth);
+  const { timelineAlbumId, deferInit, ...apiOptions } = options;
   const bucketResponse = await getTimeBucket(
     {
       ...authManager.params,
-      ...options,
+      ...apiOptions,
       timeBucket,
     },
     { signal },
@@ -29,11 +30,12 @@ export async function loadFromTimeBuckets(
     return;
   }
 
-  if (options.timelineAlbumId) {
+  if (timelineAlbumId) {
     const albumAssets = await getTimeBucket(
       {
         ...authManager.params,
-        albumId: options.timelineAlbumId,
+        ...apiOptions,
+        albumId: timelineAlbumId,
         timeBucket,
       },
       { signal },

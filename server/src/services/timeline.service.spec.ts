@@ -16,11 +16,28 @@ describe(TimelineService.name, () => {
     it("should return buckets if userId and albumId aren't set", async () => {
       mocks.asset.getTimeBuckets.mockResolvedValue([{ timeBucket: 'bucket', count: 1 }]);
 
-      await expect(sut.getTimeBuckets(authStub.admin, {})).resolves.toEqual(
-        expect.arrayContaining([{ timeBucket: 'bucket', count: 1 }]),
-      );
+      const result = await sut.getTimeBuckets(authStub.admin, {});
+      console.log(`-->[${expect.getState().currentTestName}] ${JSON.stringify(result)}`);
+
+      expect(result).toEqual(expect.arrayContaining([{ timeBucket: 'bucket', count: 1 }]));
       expect(mocks.asset.getTimeBuckets).toHaveBeenCalledWith({
         userIds: [authStub.admin.user.id],
+      });
+    });
+
+    it('should pass through startDate/endDate', async () => {
+      const startDate = new Date('2020-01-01T00:00:00.000Z');
+      const endDate = new Date('2021-01-01T00:00:00.000Z');
+      mocks.asset.getTimeBuckets.mockResolvedValue([{ timeBucket: 'bucket', count: 1 }]);
+
+      const result = await sut.getTimeBuckets(authStub.admin, { startDate, endDate });
+      console.log(`-->[${expect.getState().currentTestName}] ${JSON.stringify(result)}`);
+
+      expect(result).toEqual(expect.arrayContaining([{ timeBucket: 'bucket', count: 1 }]));
+      expect(mocks.asset.getTimeBuckets).toHaveBeenCalledWith({
+        userIds: [authStub.admin.user.id],
+        startDate,
+        endDate,
       });
     });
   });

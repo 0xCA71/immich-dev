@@ -233,10 +233,9 @@ export class TimelineManager extends VirtualScrollManager {
   }
 
   async #initializeMonthGroups() {
-    const { yearFilter, ...apiOptions } = this.#options;
     const timebuckets = await getTimeBuckets({
       ...authManager.params,
-      ...apiOptions,
+      ...this.#options,
     });
 
     const allMonths = timebuckets.map((timeBucket) => {
@@ -254,9 +253,13 @@ export class TimelineManager extends VirtualScrollManager {
     for (const month of allMonths) {
       years.add(month.yearMonth.year);
     }
-    this.availableYears = [...years].sort((a, b) => b - a);
 
-    this.months = yearFilter ? allMonths.filter((month) => month.yearMonth.year === yearFilter) : allMonths;
+    const hasDateRange = !!this.#options.startDate || !!this.#options.endDate;
+    if (this.availableYears.length === 0 || !hasDateRange) {
+      this.availableYears = [...years].sort((a, b) => b - a);
+    }
+
+    this.months = allMonths;
     this.albumAssets.clear();
     this.updateViewportGeometry(false);
   }

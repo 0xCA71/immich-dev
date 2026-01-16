@@ -92,7 +92,21 @@
 
   let selectedYear = $state<number | undefined>(undefined);
 
-  $effect(() => options && void timelineManager.updateOptions({ ...options, yearFilter: selectedYear }));
+  $effect(() => {
+    if (!options) {
+      return;
+    }
+
+    const yearRangeOptions =
+      selectedYear === undefined
+        ? { startDate: undefined, endDate: undefined }
+        : {
+            startDate: new Date(Date.UTC(selectedYear, 0, 1)).toISOString(),
+            endDate: new Date(Date.UTC(selectedYear + 1, 0, 1)).toISOString(),
+          };
+
+    void timelineManager.updateOptions({ ...options, ...yearRangeOptions });
+  });
 
   let { isViewing: showAssetViewer, asset: viewingAsset, gridScrollTarget } = assetViewingStore;
 
@@ -382,25 +396,6 @@
     timelineManager.scrollTo(0);
   };
 
-  const onJumpToDate = async (date: string) => {
-    const dateTime = DateTime.fromISO(date);
-    if (!dateTime.isValid) {
-      return;
-    }
-
-    const asset = await timelineManager.getClosestAssetToDate(dateTime.toObject());
-    if (!asset) {
-      return;
-    }
-
-    const monthGroup = await timelineManager.findMonthGroupForAsset({ id: asset.id });
-    if (!monthGroup) {
-      return;
-    }
-
-    scrollToAssetPosition(asset.id, monthGroup);
-  };
-
   let lastAssetMouseEvent: TimelineAsset | null = $state(null);
 
   let shiftKeyIsDown = $state(false);
@@ -683,78 +678,83 @@
       style:right="0"
     >
       {@render children?.()}
+      {#if timelineManager.availableYears.length > 0}
+        <YearFilter years={timelineManager.availableYears} {selectedYear} {onSelectYear} />
+      {/if}
       {#if isEmpty}
         <!-- (optional) empty placeholder -->
         {@render empty?.()}
       {/if}
     </section>
 
-    {#each timelineManager.months as monthGroup (monthGroup.viewId)}
-      {@const display = monthGroup.intersecting}
-      {@const absoluteHeight = monthGroup.top}
+    {#key selectedYear ?? 'all'}
+      {#each timelineManager.months as monthGroup (monthGroup.viewId)}
+        {@const display = monthGroup.intersecting}
+        {@const absoluteHeight = monthGroup.top}
 
-      {#if !monthGroup.isLoaded}
-        <div
-          style:height={monthGroup.height + 'px'}
-          style:position="absolute"
-          style:transform={`translate3d(0,${absoluteHeight}px,0)`}
-          style:width="100%"
-        >
-          <Skeleton {invisible} height={monthGroup.height} title={monthGroup.monthGroupTitle} />
-        </div>
-      {:else if display}
-        <div
-          class="month-group"
-          style:height={monthGroup.height + 'px'}
-          style:position="absolute"
-          style:transform={`translate3d(0,${absoluteHeight}px,0)`}
-          style:width="100%"
-        >
-          <Month
-            {assetInteraction}
-            {customThumbnailLayout}
-            {singleSelect}
-            {monthGroup}
-            manager={timelineManager}
-            onDayGroupSelect={handleGroupSelect}
+        {#if !monthGroup.isLoaded}
+          <div
+            style:height={monthGroup.height + 'px'}
+            style:position="absolute"
+            style:transform={`translate3d(0,${absoluteHeight}px,0)`}
+            style:width="100%"
           >
-            {#snippet thumbnail({ asset, position, dayGroup, groupIndex })}
-              {@const isAssetSelectionCandidate = assetInteraction.hasSelectionCandidate(asset.id)}
-              {@const isAssetSelected =
-                assetInteraction.hasSelectedAsset(asset.id) || timelineManager.albumAssets.has(asset.id)}
-              {@const isAssetDisabled = timelineManager.albumAssets.has(asset.id)}
-              <Thumbnail
-                showStackedIcon={withStacked}
-                {showArchiveIcon}
-                {asset}
-                {albumUsers}
-                {groupIndex}
-                onClick={(asset) => {
-                  if (typeof onThumbnailClick === 'function') {
-                    onThumbnailClick(asset, timelineManager, dayGroup, _onClick);
-                  } else {
-                    _onClick(timelineManager, dayGroup.getAssets(), dayGroup.groupTitle, asset);
-                  }
-                }}
-                onSelect={() => {
-                  if (isSelectionMode || assetInteraction.selectionActive) {
-                    assetSelectHandler(timelineManager, asset, dayGroup.getAssets(), dayGroup.groupTitle);
-                    return;
-                  }
-                  void onSelectAssets(asset);
-                }}
-                onMouseEvent={() => handleSelectAssetCandidates(asset)}
-                selected={isAssetSelected}
-                selectionCandidate={isAssetSelectionCandidate}
-                disabled={isAssetDisabled}
-                thumbnailWidth={position.width}
-                thumbnailHeight={position.height}
-              />
-            {/snippet}
-          </Month>
-        </div>
-      {/if}
-    {/each}
+            <Skeleton {invisible} height={monthGroup.height} title={monthGroup.monthGroupTitle} />
+          </div>
+        {:else if display}
+          <div
+            class="month-group"
+            style:height={monthGroup.height + 'px'}
+            style:position="absolute"
+            style:transform={`translate3d(0,${absoluteHeight}px,0)`}
+            style:width="100%"
+          >
+            <Month
+              {assetInteraction}
+              {customThumbnailLayout}
+              {singleSelect}
+              {monthGroup}
+              manager={timelineManager}
+              onDayGroupSelect={handleGroupSelect}
+            >
+              {#snippet thumbnail({ asset, position, dayGroup, groupIndex })}
+                {@const isAssetSelectionCandidate = assetInteraction.hasSelectionCandidate(asset.id)}
+                {@const isAssetSelected =
+                  assetInteraction.hasSelectedAsset(asset.id) || timelineManager.albumAssets.has(asset.id)}
+                {@const isAssetDisabled = timelineManager.albumAssets.has(asset.id)}
+                <Thumbnail
+                  showStackedIcon={withStacked}
+                  {showArchiveIcon}
+                  {asset}
+                  {albumUsers}
+                  {groupIndex}
+                  onClick={(asset) => {
+                    if (typeof onThumbnailClick === 'function') {
+                      onThumbnailClick(asset, timelineManager, dayGroup, _onClick);
+                    } else {
+                      _onClick(timelineManager, dayGroup.getAssets(), dayGroup.groupTitle, asset);
+                    }
+                  }}
+                  onSelect={() => {
+                    if (isSelectionMode || assetInteraction.selectionActive) {
+                      assetSelectHandler(timelineManager, asset, dayGroup.getAssets(), dayGroup.groupTitle);
+                      return;
+                    }
+                    void onSelectAssets(asset);
+                  }}
+                  onMouseEvent={() => handleSelectAssetCandidates(asset)}
+                  selected={isAssetSelected}
+                  selectionCandidate={isAssetSelectionCandidate}
+                  disabled={isAssetDisabled}
+                  thumbnailWidth={position.width}
+                  thumbnailHeight={position.height}
+                />
+              {/snippet}
+            </Month>
+          </div>
+        {/if}
+      {/each}
+    {/key}
     <!-- spacer for leadout -->
     <div
       style:height={timelineManager.bottomSectionHeight + 'px'}
@@ -771,11 +771,6 @@
     <TimelineAssetViewer bind:invisible {timelineManager} {removeAction} {withStacked} {isShared} {album} {person} />
   {/if}
 </Portal>
-
-<!-- Year Filter Bar at bottom -->
-{#if timelineManager.months.length > 0}
-  <YearFilter years={timelineManager.availableYears} {selectedYear} {onSelectYear} {onJumpToDate} />
-{/if}
 
 <style>
   #asset-grid {

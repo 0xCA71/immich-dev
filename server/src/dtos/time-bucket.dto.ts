@@ -2,9 +2,23 @@ import { ApiProperty } from '@nestjs/swagger';
 
 import { IsString } from 'class-validator';
 import { AssetOrder, AssetVisibility } from 'src/enum';
-import { ValidateBoolean, ValidateEnum, ValidateUUID } from 'src/validation';
+import { ValidateBoolean, ValidateDate, ValidateEnum, ValidateUUID } from 'src/validation';
 
 export class TimeBucketDto {
+  @ValidateDate({
+    optional: true,
+    format: 'date-time',
+    description: 'Filter assets with localDateTime greater than or equal to startDate (UTC)',
+  })
+  startDate?: Date;
+
+  @ValidateDate({
+    optional: true,
+    format: 'date-time',
+    description: 'Filter assets with localDateTime less than endDate (UTC)',
+  })
+  endDate?: Date;
+
   @ValidateUUID({ optional: true, description: 'Filter assets by specific user ID' })
   userId?: string;
 
